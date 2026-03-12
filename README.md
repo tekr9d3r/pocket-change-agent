@@ -4,17 +4,29 @@ An autonomous Ethereum yield coordination AI agent that detects idle ETH balance
 
 Built for agent-to-agent interaction — PocketChange reasons about wallets, evaluates economic conditions, and produces deterministic machine-readable staking instructions. It never holds keys or executes transactions.
 
+**Live:** https://pocket-change-agent.vercel.app
+
+---
+
+## Quick start for other agents
+
+```bash
+curl -s https://pocket-change-agent.vercel.app/skill.md
+```
+
+This returns a complete integration guide your agent can read and act on immediately.
+
 ---
 
 ## What It Does
 
-PocketChange scans Ethereum wallets for "pocket change" — small idle ETH balances between **$3 and $30 USD** — and recommends staking them through Lido to earn yield.
+PocketChange scans Ethereum wallets for "pocket change" — idle ETH balances between **$3 and $30 USD** — and recommends staking them through Lido to earn yield.
 
 For each wallet it:
 
 1. Fetches the real ETH balance (Etherscan)
 2. Gets the current ETH/USD price (CoinGecko)
-3. Evaluates current gas prices and estimates Lido deposit cost (Etherscan)
+3. Evaluates current gas prices and estimates Lido deposit cost
 4. Fetches the current Lido staking APY
 5. Reasons about whether funds are truly idle
 6. Evaluates whether staking is economically rational given gas costs
@@ -46,36 +58,58 @@ The $3 gas reserve is never staked. Only the amount above this floor is eligible
 
 ---
 
-## Fee Model
+## Integration Options
 
-PocketChange charges a **0.25% coordination fee** per staking deposit.
+### Option A — One-time analysis
 
-- Fee is calculated on the stakeable ETH (balance minus $3 gas reserve)
-- Fee is deducted **before** the Lido deposit, not from rewards
-- Fee is sent to the PocketChange treasury address
-- PocketChange never custodies funds
+```bash
+curl -X POST https://pocket-change-agent.vercel.app/analyze \
+  -H "Content-Type: application/json" \
+  -d '{
+    "wallet_addresses": ["0xYOUR_WALLET"],
+    "agent_context": "idle ETH, no upcoming liquidity needs",
+    "requesting_agent": "your-agent-name"
+  }'
+```
 
-**Example:** Wallet has 0.008 ETH ($20). Gas reserve = $3 worth of ETH. Stakeable = $17 worth. Fee = 0.25% of stakeable ETH.
+### Option B — Automated 24h monitoring (recommended)
+
+Register once. PocketChange checks your wallets every 24 hours automatically and stores results.
+
+**Step 1 — Register your wallets:**
+```bash
+curl -X POST https://pocket-change-agent.vercel.app/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "your-agent-name",
+    "wallet_addresses": ["0xWALLET1", "0xWALLET2"]
+  }'
+```
+
+**Step 2 — Fetch latest results anytime:**
+```bash
+curl https://pocket-change-agent.vercel.app/results/your-agent-name
+```
+
+The cron job runs daily at midnight UTC and updates all registered agents automatically.
 
 ---
 
-## Protocol & Chain
+## API Endpoints
 
-| Parameter | Value |
-|-----------|-------|
-| Chain | Ethereum Mainnet only |
-| Asset | ETH only |
-| Protocol | Lido |
-| Action | stake ETH → receive stETH |
-| Lido contract | `0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84` |
-
-Any request involving other chains, tokens, or protocols is refused.
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /skill.md | Agent skill file — full integration guide for other agents |
+| POST | /analyze | One-time wallet analysis |
+| POST | /register | Register for 24h automated monitoring |
+| GET | /results/{agent_id} | Fetch latest analysis for a registered agent |
+| GET | /agents | List all registered agents |
+| GET | /schema | Full JSON schema of PocketChangeResponse |
+| GET | /health | Health check |
 
 ---
 
 ## Output Schema
-
-Every response returns structured JSON:
 
 ```json
 {
@@ -86,33 +120,31 @@ Every response returns structured JSON:
   "recommended_action": "stake | wait | none | insufficient_information",
   "decision_reasoning": "...",
   "protocol": "lido",
-  "estimated_value_usd": 0.0,
+  "estimated_value_usd": 12.50,
   "risk_level": "low | medium | high",
   "fee_model": "deposit_fee",
   "fee_percentage": 0.25,
-  "fee_amount_eth": "0.000xxx",
+  "fee_amount_eth": "0.000005",
   "fee_recipient": "0x...",
   "requires_signature": true,
   "execution_steps": [
     {
       "step": 1,
-      "action": "Transfer coordination fee",
-      "value_eth": "0.000xxx",
-      "notes": "..."
+      "action": "Send 0.25% fee to PocketChange treasury",
+      "value_eth": "0.000005"
     },
     {
       "step": 2,
       "action": "Call Lido submit()",
       "contract": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
-      "value_eth": "0.00xxx",
-      "notes": "..."
+      "value_eth": "0.002"
     }
   ],
   "notes_for_agents": "..."
 }
 ```
 
-`requires_signature` is always `true` — execution must be performed externally by a signing agent or human.
+`requires_signature` is always `true` — execution must be performed externally.
 
 ---
 
@@ -121,7 +153,7 @@ Every response returns structured JSON:
 ```
 Input (wallet addresses + optional agent context)
         ↓
-   cli.py / server.py  (entry points)
+   server.py  (FastAPI — agent-to-agent HTTP)
         ↓
    agent.py — builds messages, runs tool-use loop
         ↓
@@ -132,11 +164,11 @@ Input (wallet addresses + optional agent context)
   Claude reasons over all data
         ↓
   Structured JSON response (PocketChangeResponse)
+        ↓
+  storage.py — Vercel KV (registered agents + results)
+        ↓
+  vercel cron — runs /cron/analyze-all every 24h
 ```
-
-**AI model:** `claude-haiku-4-5-20251001` — fast and cost-efficient for structured reasoning tasks.
-
-**Tool-use loop:** Claude fetches all data via tools, then reasons and returns a single JSON output. Tools run concurrently for speed.
 
 ---
 
@@ -146,10 +178,13 @@ Input (wallet addresses + optional agent context)
 PocketChangeAgent/
 ├── agent.py          # Core agent: system prompt, tool-use loop, response parser
 ├── tools.py          # 4 Ethereum data tools + Claude tool definitions
-├── models.py         # Pydantic models: AgentRequest, PocketChangeResponse
+├── models.py         # Pydantic models: AgentRegistration, AgentRequest, PocketChangeResponse
 ├── settings.py       # Configuration via environment variables
-├── server.py         # FastAPI HTTP server for agent-to-agent communication
+├── storage.py        # Vercel KV storage for registered agents and results
+├── server.py         # FastAPI HTTP server (analyze, register, cron, skill.md)
 ├── cli.py            # Command-line interface
+├── api/index.py      # Vercel serverless entry point
+├── vercel.json       # Vercel deployment config + cron schedule
 ├── requirements.txt  # Python dependencies
 └── .env.example      # Environment variable template
 ```
@@ -174,68 +209,72 @@ pip3 install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` and fill in:
+Edit `.env`:
 ```
-ANTHROPIC_API_KEY=sk-ant-...        # console.anthropic.com
-ETHERSCAN_API_KEY=...               # etherscan.io/myapikey (free)
-POCKET_CHANGE_TREASURY_ADDRESS=0x... # your fee recipient address
-```
-
----
-
-## Usage
-
-### CLI
-
-```bash
-# Analyze a wallet
-python3 cli.py analyze 0xYourWalletAddress
-
-# Analyze multiple wallets
-python3 cli.py analyze 0xWallet1 0xWallet2 0xWallet3
-
-# With custom threshold and agent context
-python3 cli.py analyze 0xWallet1 --threshold 20 --context "user is risk averse"
-
-# Machine-readable JSON output
-python3 cli.py analyze 0xWallet1 --output json
+ANTHROPIC_API_KEY=sk-ant-...
+ETHERSCAN_API_KEY=...
+POCKET_CHANGE_TREASURY_ADDRESS=0x...
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
 ```
 
-### HTTP Server (agent-to-agent)
-
+**4. Run locally**
 ```bash
 uvicorn server:app --reload
 ```
 
-**Analyze wallets:**
-```bash
-curl -X POST http://localhost:8000/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "wallet_addresses": ["0xYourWalletAddress"],
-    "agent_context": "no liquidity needs in next 30 days"
-  }'
-```
+---
 
-**Health check:**
-```bash
-curl http://localhost:8000/health
-```
+## Vercel Deployment
 
-**Discover response schema (for agent integration):**
-```bash
-curl http://localhost:8000/schema
-```
+The repo is pre-configured for Vercel. Push to GitHub and Vercel auto-deploys.
+
+**Required environment variables in Vercel dashboard:**
+
+| Variable | Source |
+|----------|--------|
+| `ANTHROPIC_API_KEY` | console.anthropic.com |
+| `ETHERSCAN_API_KEY` | etherscan.io/myapikey (free) |
+| `POCKET_CHANGE_TREASURY_ADDRESS` | your ETH address |
+| `KV_REST_API_URL` | auto-added when you connect Vercel KV |
+| `KV_REST_API_TOKEN` | auto-added when you connect Vercel KV |
+
+**Vercel KV setup:** Dashboard → Storage → Create Database → KV → Connect to project.
 
 ---
 
-## External APIs Used
+## Fee Model
 
-| API | Purpose | Auth |
-|-----|---------|------|
-| Etherscan | ETH balances, gas prices | Free API key |
-| CoinGecko | ETH/USD price | None required |
-| Lido | Current staking APY | None required |
+PocketChange charges a **0.25% coordination fee** per staking deposit.
+
+- Fee is calculated on the stakeable ETH (balance minus $3 gas reserve)
+- Fee is deducted **before** the Lido deposit, not from rewards
+- Fee is sent to the PocketChange treasury address
+- PocketChange never custodies funds
+
+---
+
+## Protocol & Chain
+
+| Parameter | Value |
+|-----------|-------|
+| Chain | Ethereum Mainnet only |
+| Asset | ETH only |
+| Protocol | Lido |
+| Action | stake ETH → receive stETH |
+| Lido contract | `0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84` |
+
+---
+
+## Analytics
+
+| Where | What you see |
+|-------|-------------|
+| Vercel → Logs | Every request, errors, response times |
+| Vercel → Analytics | Traffic per endpoint, latency trends |
+| Vercel → Cron Jobs | 24h job execution history |
+| `/agents` endpoint | All registered agents + last analysis |
+| Vercel → Storage → KV | Raw database browser |
 
 ---
 
@@ -246,4 +285,3 @@ curl http://localhost:8000/schema
 - Always leaves $3 ETH gas reserve untouched
 - Refuses economically irrational operations
 - `requires_signature: true` on all outputs — no self-execution
-- Outputs are deterministic and machine-verifiable
