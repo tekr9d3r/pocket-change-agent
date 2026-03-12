@@ -39,17 +39,6 @@ async def health():
     return {"status": "ok", "agent": "PocketChange"}
 
 
-@app.get("/debug")
-async def debug():
-    import os
-    return {
-        "ANTHROPIC_API_KEY": bool(os.environ.get("ANTHROPIC_API_KEY")),
-        "ETHERSCAN_API_KEY": bool(os.environ.get("ETHERSCAN_API_KEY")),
-        "POCKET_CHANGE_TREASURY_ADDRESS": bool(os.environ.get("POCKET_CHANGE_TREASURY_ADDRESS")),
-        "settings_anthropic": bool(settings.ANTHROPIC_API_KEY),
-        "settings_etherscan": bool(settings.ETHERSCAN_API_KEY),
-    }
-
 
 SKILL_MD = """# PocketChange — Ethereum Yield Coordination Agent
 
