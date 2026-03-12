@@ -1,41 +1,47 @@
 from __future__ import annotations
 
-from typing import Literal, Optional
-from pydantic import BaseModel, field_validator
+import re
+from typing import Annotated, Literal, Optional
+from pydantic import BaseModel, Field, field_validator
+
+# Strict Ethereum address: 0x + exactly 40 hex characters
+_ETH_ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
+
+def _validate_eth_addresses(addresses: list[str]) -> list[str]:
+    if not addresses:
+        raise ValueError("At least one wallet address is required")
+    if len(addresses) > 20:
+        raise ValueError("Maximum 20 wallet addresses per request")
+    for addr in addresses:
+        if not _ETH_ADDRESS_RE.match(addr):
+            raise ValueError(
+                f"Invalid Ethereum address: {addr!r}. "
+                "Must be 0x followed by exactly 40 hex characters."
+            )
+    return addresses
 
 
 class AgentRegistration(BaseModel):
-    agent_id: str
+    agent_id: Annotated[str, Field(min_length=1, max_length=100)]
     wallet_addresses: list[str]
 
     @field_validator("wallet_addresses")
     @classmethod
     def validate_addresses(cls, addresses: list[str]) -> list[str]:
-        for addr in addresses:
-            if not addr.startswith("0x") or len(addr) != 42:
-                raise ValueError(
-                    f"Invalid Ethereum address: {addr!r}. "
-                    "Must start with '0x' and be 42 characters long."
-                )
-        return addresses
+        return _validate_eth_addresses(addresses)
 
 
 class AgentRequest(BaseModel):
     wallet_addresses: list[str]
-    agent_context: Optional[str] = None
-    requesting_agent: Optional[str] = None
-    max_eth_threshold_usd: float = 30.0
+    agent_context: Annotated[Optional[str], Field(default=None, max_length=500)]
+    requesting_agent: Annotated[Optional[str], Field(default=None, max_length=100)]
+    # Cap at 30 — callers cannot raise the threshold above the intended limit
+    max_eth_threshold_usd: Annotated[float, Field(default=30.0, ge=0.0, le=30.0)]
 
     @field_validator("wallet_addresses")
     @classmethod
     def validate_addresses(cls, addresses: list[str]) -> list[str]:
-        for addr in addresses:
-            if not addr.startswith("0x") or len(addr) != 42:
-                raise ValueError(
-                    f"Invalid Ethereum address: {addr!r}. "
-                    "Must start with '0x' and be 42 characters long."
-                )
-        return addresses
+        return _validate_eth_addresses(addresses)
 
 
 class ExecutionStep(BaseModel):

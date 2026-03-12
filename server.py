@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException
+import os
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
@@ -178,26 +180,33 @@ async def get_results(agent_id: str):
 
 @app.get("/agents")
 async def list_agents():
-    """List all registered agents."""
-    return storage.get_all_agents()
+    """List registered agent IDs (no wallet addresses exposed)."""
+    agents = storage.get_all_agents()
+    # Only return agent IDs and registration time — never expose wallet addresses publicly
+    return [
+        {"agent_id": a["agent_id"], "registered_at": a.get("registered_at"), "last_analyzed": a.get("last_analyzed")}
+        for a in agents
+    ]
 
 
 @app.get("/cron/analyze-all")
-async def cron_analyze_all():
+async def cron_analyze_all(request: Request):
     """
     Called by Vercel cron every 24 hours.
-    Analyzes all registered agents' wallets and stores results.
+    Vercel always sends x-vercel-cron: 1 on cron requests — blocks random callers.
     """
+    if request.headers.get("x-vercel-cron") != "1":
+        raise HTTPException(status_code=403, detail="Forbidden")
     agents = storage.get_all_agents()
     results = []
     for agent_data in agents:
         try:
-            request = AgentRequest(
+            request_obj = AgentRequest(
                 wallet_addresses=agent_data["wallet_addresses"],
                 requesting_agent=agent_data["agent_id"],
                 agent_context="automated 24h scheduled analysis",
             )
-            result = await run_agent_loop(request)
+            result = await run_agent_loop(request_obj)
             storage.save_result(agent_data["agent_id"], result.model_dump())
             results.append({"agent_id": agent_data["agent_id"], "status": "ok"})
         except Exception as e:

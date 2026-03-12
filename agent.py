@@ -94,6 +94,11 @@ class AgentError(Exception):
     pass
 
 
+def _sanitize(text: str) -> str:
+    """Strip control characters and newlines to prevent prompt injection."""
+    return re.sub(r"[\x00-\x1f\x7f]", " ", text).strip()
+
+
 def _build_user_message(request: AgentRequest) -> str:
     lines = [
         f"Please analyze the following {len(request.wallet_addresses)} wallet(s) for idle ETH (pocket change).",
@@ -101,9 +106,9 @@ def _build_user_message(request: AgentRequest) -> str:
         f"Wallet addresses: {', '.join(request.wallet_addresses)}",
     ]
     if request.requesting_agent:
-        lines.append(f"Requesting agent: {request.requesting_agent}")
+        lines.append(f"Requesting agent: {_sanitize(request.requesting_agent)}")
     if request.agent_context:
-        lines.append(f"Agent context / constraints: {request.agent_context}")
+        lines.append(f"Agent context / constraints: {_sanitize(request.agent_context)}")
     lines.append(f"Treasury address for fees: {settings.POCKET_CHANGE_TREASURY_ADDRESS}")
     return "\n".join(lines)
 
@@ -132,12 +137,22 @@ def _parse_agent_response(content_blocks) -> PocketChangeResponse:
     return PocketChangeResponse(**data)
 
 
+_anthropic_client: anthropic.Anthropic | None = None
+
+
+def _get_client() -> anthropic.Anthropic:
+    global _anthropic_client
+    if _anthropic_client is None:
+        import os
+        api_key = settings.ANTHROPIC_API_KEY or os.environ.get("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            raise AgentError("ANTHROPIC_API_KEY is not set")
+        _anthropic_client = anthropic.Anthropic(api_key=api_key)
+    return _anthropic_client
+
+
 async def run_agent_loop(request: AgentRequest) -> PocketChangeResponse:
-    import os
-    api_key = settings.ANTHROPIC_API_KEY or os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        raise AgentError("ANTHROPIC_API_KEY is not set")
-    client = anthropic.Anthropic(api_key=api_key)
+    client = _get_client()
 
     messages = [{"role": "user", "content": _build_user_message(request)}]
 
