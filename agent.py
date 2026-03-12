@@ -114,10 +114,15 @@ def _parse_agent_response(content_blocks) -> PocketChangeResponse:
         raise AgentError("No text block in final agent response")
 
     text = text.strip()
-    # Strip markdown fences defensively
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\n?", "", text)
-        text = re.sub(r"\n?```$", "", text.rstrip())
+    # Extract JSON from markdown fences if present
+    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if fence_match:
+        text = fence_match.group(1)
+    else:
+        # Find the first { ... } block in the text
+        brace_match = re.search(r"\{.*\}", text, re.DOTALL)
+        if brace_match:
+            text = brace_match.group(0)
 
     try:
         data = json.loads(text)

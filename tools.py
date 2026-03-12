@@ -1,10 +1,15 @@
 import asyncio
 import json
 import math
+import os
 
 import httpx
 
 from settings import settings
+
+
+def _etherscan_key() -> str:
+    return settings.ETHERSCAN_API_KEY or os.environ.get("ETHERSCAN_API_KEY", "")
 
 # Lido stETH deposit uses ~120k gas (conservative estimate)
 LIDO_DEPOSIT_GAS_UNITS = 120_000
@@ -17,7 +22,7 @@ async def get_eth_balance(wallet_address: str) -> dict:
         "action": "balance",
         "address": wallet_address,
         "tag": "latest",
-        "apikey": settings.ETHERSCAN_API_KEY,
+        "apikey": _etherscan_key(),
     }
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -60,7 +65,7 @@ async def get_gas_price() -> dict:
     params = {
         "module": "gastracker",
         "action": "gasoracle",
-        "apikey": settings.ETHERSCAN_API_KEY,
+        "apikey": _etherscan_key(),
     }
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
