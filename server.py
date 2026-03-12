@@ -1,5 +1,3 @@
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,21 +6,10 @@ from models import AgentRequest, PocketChangeResponse
 from settings import settings
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Fail fast if required env vars are missing
-    required = ["ANTHROPIC_API_KEY", "ETHERSCAN_API_KEY"]
-    for var in required:
-        if not getattr(settings, var, None):
-            raise RuntimeError(f"Missing required environment variable: {var}")
-    yield
-
-
 app = FastAPI(
     title="PocketChange",
     description="Autonomous Ethereum yield coordination agent. Analyzes idle ETH balances and recommends Lido staking.",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
 app.add_middleware(
