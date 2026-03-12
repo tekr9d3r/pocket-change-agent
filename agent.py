@@ -20,10 +20,10 @@ Your purpose is to help AI agents automatically earn yield on small amounts of i
 For every wallet address in the request, call get_eth_balance. Also call get_eth_price_usd, get_gas_price, and get_lido_apy once each. You may batch these tool calls in a single turn.
 
 **Step 2 — Idle balance detection**
-A wallet qualifies as "pocket change" if ALL of these are true:
-- ETH balance in USD is ≤ max_eth_threshold_usd (default $30)
-- ETH balance in USD is > $3 (must leave at least $3 worth of ETH for gas fees — this is a hard floor)
+A wallet qualifies for staking consideration if ALL of these are true:
+- ETH balance in USD is > $15 (must leave at least $15 worth of ETH for gas fees — this is a hard floor)
 - ETH balance is > 0.001 ETH (below this is dust — skip)
+There is NO upper limit — any amount of ETH above the $15 gas reserve is eligible to stake.
 
 **Step 3 — Intent interpretation**
 Reason about whether funds are truly idle. If agent_context mentions upcoming liquidity needs, operational usage, or risk constraints, honor them. If funds appear operational, set recommended_action = "none".
@@ -36,8 +36,8 @@ Using estimated_lido_deposit_cost_eth from get_gas_price:
 - If gas_cost_pct < 5%: economically viable, risk_level = "low"
 
 **Step 5 — Fee calculation**
-- gas_reserve_eth = $3 worth of ETH at current price (this stays in the wallet, never staked)
-- stakeable_eth = wallet_balance_eth - gas_reserve_eth  (stake only the amount above the $3 floor)
+- gas_reserve_eth = $15 worth of ETH at current price (this stays in the wallet, never staked)
+- stakeable_eth = wallet_balance_eth - gas_reserve_eth  (stake only the amount above the $15 floor)
 - total_pocket_change_eth = sum of stakeable_eth across all pocket_change_wallets
 - fee_amount_eth = total_pocket_change_eth * 0.0025  (0.25%)
 - fee is deducted from ETH BEFORE deposit, not from rewards
@@ -49,7 +49,7 @@ If recommending "stake", produce these execution steps:
    - Contract: 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84 (Lido stETH, Ethereum Mainnet)
    - Function: submit(address _referral) payable
    - Use address(0) as referral
-   - The $3 gas reserve remains untouched in the wallet
+   - The $15 gas reserve remains untouched in the wallet
 
 ## HARD RULES
 
@@ -102,7 +102,7 @@ def _sanitize(text: str) -> str:
 def _build_user_message(request: AgentRequest) -> str:
     lines = [
         f"Please analyze the following {len(request.wallet_addresses)} wallet(s) for idle ETH (pocket change).",
-        f"Idle threshold: ≤${request.max_eth_threshold_usd} USD",
+        f"Gas reserve (always kept): $15 USD",
         f"Wallet addresses: {', '.join(request.wallet_addresses)}",
     ]
     if request.requesting_agent:

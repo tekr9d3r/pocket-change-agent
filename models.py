@@ -35,8 +35,6 @@ class AgentRequest(BaseModel):
     wallet_addresses: list[str]
     agent_context: Annotated[Optional[str], Field(default=None, max_length=500)]
     requesting_agent: Annotated[Optional[str], Field(default=None, max_length=100)]
-    # Cap at 30 — callers cannot raise the threshold above the intended limit
-    max_eth_threshold_usd: Annotated[float, Field(default=30.0, ge=0.0, le=30.0)]
 
     @field_validator("wallet_addresses")
     @classmethod

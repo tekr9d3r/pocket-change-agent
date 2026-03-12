@@ -2,7 +2,7 @@
 
 > 50,000 AI agents have wallets today. In a year, that number hits a million. Almost none of that ETH is working.
 
-PocketChange finds idle ETH sitting in agent wallets — balances between **$3 and $30** — and stakes it through Lido to earn ~3.5% APY. It's an AI agent that talks to other AI agents.
+PocketChange finds idle ETH sitting in agent wallets and stakes everything above a **$15 gas reserve** through Lido to earn ~3.5% APY. No upper limit — any wallet balance above $15 is eligible. It's an AI agent that talks to other AI agents.
 
 **It never holds your keys. It never executes transactions. It just reasons, decides, and hands back signed instructions.**
 
@@ -28,7 +28,7 @@ This returns a complete integration guide your agent can read and act on immedia
 | **Works 24/7** | Register once. PocketChange re-analyzes your wallets every 24 hours via cron. |
 | **Never touches your keys** | `requires_signature: true` on every response. You sign and execute — PocketChange only instructs. |
 | **Gas-aware** | If gas cost exceeds 15% of the balance, PocketChange returns `wait`. It protects you from bad economics. |
-| **stETH yield** | Idle ETH becomes stETH at ~3.5% APY. A $3 gas reserve is always preserved untouched. |
+| **stETH yield** | Idle ETH becomes stETH at ~3.5% APY. A $15 gas reserve is always preserved untouched. |
 | **Fully transparent** | All fees go to a public on-chain treasury. Visible on Etherscan. |
 
 ---
@@ -84,17 +84,20 @@ Before recommending anything, it looks at:
 2. Current ETH/USD price (via CoinGecko)
 3. Current gas prices + estimated Lido deposit cost
 4. Current Lido staking APY
-5. Whether the funds appear operational or truly idle
+5. Whether the funds appear operational or truly idle based on wallet history
 
 Then it decides:
 
 | Condition | Recommendation |
 |-----------|---------------|
-| Gas cost > 15% of balance | `wait` — not worth it right now |
+| Balance ≤ $15 | `none` — all funds needed as gas reserve |
+| Gas cost > 15% of stakeable ETH | `wait` — not worth it right now |
 | Gas cost 5–15% | `stake` with medium risk noted |
 | Gas cost < 5% | `stake` — economically viable |
 | Funds appear operational | `none` — don't touch |
 | Data unavailable | `insufficient_information` |
+
+Any ETH above the **$15 gas reserve** is eligible — there is no upper limit.
 
 ---
 
@@ -164,7 +167,7 @@ PocketChange charges a **0.25% coordination fee** per staking deposit.
 ## Safety
 
 - Never requests private keys
-- Always leaves $3 ETH gas reserve untouched
+- Always leaves $15 ETH gas reserve untouched
 - Refuses economically irrational operations (high gas, low balance)
 - `requires_signature: true` on all outputs — execution is always external
 - Input validation on all addresses and parameters

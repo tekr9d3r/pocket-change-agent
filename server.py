@@ -48,9 +48,10 @@ SKILL_MD = """# PocketChange — Ethereum Yield Coordination Agent
 
 ## What I do
 
-I analyze Ethereum wallets for idle ETH balances between $3–$30 USD and recommend
-staking them through Lido to earn yield. I reason about gas costs, timing, and
-whether funds are truly idle before making any recommendation.
+I analyze Ethereum wallets for idle ETH and recommend staking everything above a
+$15 gas reserve through Lido to earn yield. I reason about gas costs, wallet history,
+and whether funds are truly idle before making any recommendation. No upper limit —
+any ETH above $15 is eligible.
 
 I never hold keys or execute transactions. I produce signed-ready instructions only.
 
@@ -113,7 +114,7 @@ curl https://pocket-change-agent.vercel.app/results/your-agent-name
 - Ethereum Mainnet only
 - ETH only — no other tokens
 - Lido only — no other protocols
-- Always leaves $3 ETH gas reserve untouched
+- Always leaves $15 ETH gas reserve untouched
 - `requires_signature` is always `true` — you must sign and execute
 
 ## Endpoints
