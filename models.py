@@ -4,6 +4,22 @@ from typing import Literal, Optional
 from pydantic import BaseModel, field_validator
 
 
+class AgentRegistration(BaseModel):
+    agent_id: str
+    wallet_addresses: list[str]
+
+    @field_validator("wallet_addresses")
+    @classmethod
+    def validate_addresses(cls, addresses: list[str]) -> list[str]:
+        for addr in addresses:
+            if not addr.startswith("0x") or len(addr) != 42:
+                raise ValueError(
+                    f"Invalid Ethereum address: {addr!r}. "
+                    "Must start with '0x' and be 42 characters long."
+                )
+        return addresses
+
+
 class AgentRequest(BaseModel):
     wallet_addresses: list[str]
     agent_context: Optional[str] = None

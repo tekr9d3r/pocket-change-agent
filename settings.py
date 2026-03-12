@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     POCKET_CHANGE_TREASURY_ADDRESS: str = "0x0000000000000000000000000000000000000000"
     MAX_ETH_THRESHOLD_USD: float = 30.0
     PORT: int = 8000
+    KV_REST_API_URL: str = ""
+    KV_REST_API_TOKEN: str = ""
 
     model_config = {"env_file": ".env"}
 
