@@ -1,14 +1,17 @@
-# PocketChange Agent
+# PocketChange
 
-An autonomous Ethereum yield coordination AI agent that detects idle ETH balances and prepares staking instructions via Lido.
+> 50,000 AI agents have wallets today. In a year, that number hits a million. Almost none of that ETH is working.
 
-Built for agent-to-agent interaction — PocketChange reasons about wallets, evaluates economic conditions, and produces deterministic machine-readable staking instructions. It never holds keys or executes transactions.
+PocketChange finds idle ETH sitting in agent wallets — balances between **$3 and $30** — and stakes it through Lido to earn ~3.5% APY. It's an AI agent that talks to other AI agents.
+
+**It never holds your keys. It never executes transactions. It just reasons, decides, and hands back signed instructions.**
 
 **Live:** https://pocket-change-agent.vercel.app
+**Landing page:** https://pocket-change-landing.vercel.app
 
 ---
 
-## Quick start for other agents
+## How to integrate (one command)
 
 ```bash
 curl -s https://pocket-change-agent.vercel.app/skill.md
@@ -18,47 +21,27 @@ This returns a complete integration guide your agent can read and act on immedia
 
 ---
 
-## What It Does
+## Why use PocketChange?
 
-PocketChange scans Ethereum wallets for "pocket change" — idle ETH balances between **$3 and $30 USD** — and recommends staking them through Lido to earn yield.
-
-For each wallet it:
-
-1. Fetches the real ETH balance (Etherscan)
-2. Gets the current ETH/USD price (CoinGecko)
-3. Evaluates current gas prices and estimates Lido deposit cost
-4. Fetches the current Lido staking APY
-5. Reasons about whether funds are truly idle
-6. Evaluates whether staking is economically rational given gas costs
-7. Returns a structured JSON response with a recommendation and execution steps
+| | |
+|---|---|
+| **Works 24/7** | Register once. PocketChange re-analyzes your wallets every 24 hours via cron. |
+| **Never touches your keys** | `requires_signature: true` on every response. You sign and execute — PocketChange only instructs. |
+| **Gas-aware** | If gas cost exceeds 15% of the balance, PocketChange returns `wait`. It protects you from bad economics. |
+| **stETH yield** | Idle ETH becomes stETH at ~3.5% APY. A $3 gas reserve is always preserved untouched. |
+| **Fully transparent** | All fees go to a public on-chain treasury. Visible on Etherscan. |
 
 ---
 
-## Pocket Change Definition
+## How it works
 
-A wallet qualifies as pocket change if:
-
-- ETH balance in USD is **≤ $30** (configurable)
-- ETH balance in USD is **> $3** (hard floor — always kept for gas fees)
-- ETH balance is **> 0.001 ETH** (dust threshold)
-
-The $3 gas reserve is never staked. Only the amount above this floor is eligible.
+**1. Register** — submit your agent ID and wallet addresses once
+**2. Analyze** — PocketChange fetches balances, gas prices, and Lido APY, then reasons with Claude AI
+**3. Earn** — receive structured staking instructions, sign them, and collect yield
 
 ---
 
-## Decision Logic
-
-| Condition | Action |
-|-----------|--------|
-| Gas cost > 15% of balance | `wait` — economically inefficient |
-| Gas cost 5–15% of balance | `stake` with medium risk noted |
-| Gas cost < 5% of balance | `stake` — economically viable |
-| Funds appear operational | `none` — do not stake |
-| Data unavailable | `insufficient_information` |
-
----
-
-## Integration Options
+## Quick start
 
 ### Option A — One-time analysis
 
@@ -73,8 +56,6 @@ curl -X POST https://pocket-change-agent.vercel.app/analyze \
 ```
 
 ### Option B — Automated 24h monitoring (recommended)
-
-Register once. PocketChange checks your wallets every 24 hours automatically and stores results.
 
 **Step 1 — Register your wallets:**
 ```bash
@@ -95,21 +76,29 @@ The cron job runs daily at midnight UTC and updates all registered agents automa
 
 ---
 
-## API Endpoints
+## What PocketChange checks
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /skill.md | Agent skill file — full integration guide for other agents |
-| POST | /analyze | One-time wallet analysis |
-| POST | /register | Register for 24h automated monitoring |
-| GET | /results/{agent_id} | Fetch latest analysis for a registered agent |
-| GET | /agents | List all registered agents |
-| GET | /schema | Full JSON schema of PocketChangeResponse |
-| GET | /health | Health check |
+Before recommending anything, it looks at:
+
+1. Real ETH balance (via Etherscan)
+2. Current ETH/USD price (via CoinGecko)
+3. Current gas prices + estimated Lido deposit cost
+4. Current Lido staking APY
+5. Whether the funds appear operational or truly idle
+
+Then it decides:
+
+| Condition | Recommendation |
+|-----------|---------------|
+| Gas cost > 15% of balance | `wait` — not worth it right now |
+| Gas cost 5–15% | `stake` with medium risk noted |
+| Gas cost < 5% | `stake` — economically viable |
+| Funds appear operational | `none` — don't touch |
+| Data unavailable | `insufficient_information` |
 
 ---
 
-## Output Schema
+## Response format
 
 ```json
 {
@@ -117,15 +106,14 @@ The cron job runs daily at midnight UTC and updates all registered agents automa
   "chain": "ethereum",
   "wallets_analyzed": ["0x..."],
   "pocket_change_wallets": ["0x..."],
-  "recommended_action": "stake | wait | none | insufficient_information",
-  "decision_reasoning": "...",
+  "recommended_action": "stake",
+  "decision_reasoning": "Balance of $12.50 with gas cost at 3.2% — economically viable to stake.",
   "protocol": "lido",
   "estimated_value_usd": 12.50,
-  "risk_level": "low | medium | high",
-  "fee_model": "deposit_fee",
+  "risk_level": "low",
   "fee_percentage": 0.25,
   "fee_amount_eth": "0.000005",
-  "fee_recipient": "0x...",
+  "fee_recipient": "0xFCcA38986b2B30D14CE829b20ed7B0Cb1c6E0116",
   "requires_signature": true,
   "execution_steps": [
     {
@@ -144,67 +132,59 @@ The cron job runs daily at midnight UTC and updates all registered agents automa
 }
 ```
 
-`requires_signature` is always `true` — execution must be performed externally.
+`requires_signature` is always `true` — PocketChange never self-executes.
 
 ---
 
-## Architecture
+## API endpoints
 
-```
-Input (wallet addresses + optional agent context)
-        ↓
-   server.py  (FastAPI — agent-to-agent HTTP)
-        ↓
-   agent.py — builds messages, runs tool-use loop
-        ↓
-  Claude claude-haiku-4-5 with tool_use
-        ↓
-  tools.py — Etherscan, CoinGecko, Lido APIs
-        ↓
-  Claude reasons over all data
-        ↓
-  Structured JSON response (PocketChangeResponse)
-        ↓
-  storage.py — Vercel KV (registered agents + results)
-        ↓
-  vercel cron — runs /cron/analyze-all every 24h
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/skill.md` | Full integration guide for other agents |
+| POST | `/analyze` | One-time wallet analysis |
+| POST | `/register` | Register for 24h automated monitoring |
+| GET | `/results/{agent_id}` | Fetch latest analysis results |
+| GET | `/agents` | List all registered agents |
+| GET | `/schema` | Full JSON schema of the response |
+| GET | `/health` | Health check |
 
 ---
 
-## File Structure
+## Fee model
 
-```
-PocketChangeAgent/
-├── agent.py          # Core agent: system prompt, tool-use loop, response parser
-├── tools.py          # 4 Ethereum data tools + Claude tool definitions
-├── models.py         # Pydantic models: AgentRegistration, AgentRequest, PocketChangeResponse
-├── settings.py       # Configuration via environment variables
-├── storage.py        # Vercel KV storage for registered agents and results
-├── server.py         # FastAPI HTTP server (analyze, register, cron, skill.md)
-├── cli.py            # Command-line interface
-├── api/index.py      # Vercel serverless entry point
-├── vercel.json       # Vercel deployment config + cron schedule
-├── requirements.txt  # Python dependencies
-└── .env.example      # Environment variable template
-```
+PocketChange charges a **0.25% coordination fee** per staking deposit.
+
+- Calculated on stakeable ETH (balance minus $3 gas reserve)
+- Deducted before the Lido deposit, not from rewards
+- Sent to the public treasury: [`0xFCcA...E116`](https://etherscan.io/address/0xFCcA38986b2B30D14CE829b20ed7B0Cb1c6E0116)
+- PocketChange never custodies funds
 
 ---
 
-## Setup
+## Safety
 
-**1. Clone the repo**
+- Never requests private keys
+- Always leaves $3 ETH gas reserve untouched
+- Refuses economically irrational operations (high gas, low balance)
+- `requires_signature: true` on all outputs — execution is always external
+- Input validation on all addresses and parameters
+
+---
+
+## Self-hosting
+
+**1. Clone**
 ```bash
 git clone https://github.com/tekr9d3r/pocket-change-agent.git
 cd pocket-change-agent
 ```
 
-**2. Install dependencies**
+**2. Install**
 ```bash
 pip3 install -r requirements.txt
 ```
 
-**3. Configure environment**
+**3. Configure**
 ```bash
 cp .env.example .env
 ```
@@ -218,70 +198,39 @@ KV_REST_API_URL=...
 KV_REST_API_TOKEN=...
 ```
 
-**4. Run locally**
+**4. Run**
 ```bash
 uvicorn server:app --reload
 ```
 
 ---
 
-## Vercel Deployment
+## Deploy to Vercel
 
-The repo is pre-configured for Vercel. Push to GitHub and Vercel auto-deploys.
+Push to GitHub and connect the repo in Vercel. Set these environment variables in the Vercel dashboard:
 
-**Required environment variables in Vercel dashboard:**
-
-| Variable | Source |
-|----------|--------|
+| Variable | Where to get it |
+|----------|----------------|
 | `ANTHROPIC_API_KEY` | console.anthropic.com |
 | `ETHERSCAN_API_KEY` | etherscan.io/myapikey (free) |
 | `POCKET_CHANGE_TREASURY_ADDRESS` | your ETH address |
-| `KV_REST_API_URL` | auto-added when you connect Vercel KV |
-| `KV_REST_API_TOKEN` | auto-added when you connect Vercel KV |
+| `KV_REST_API_URL` | auto-added via Vercel Storage → KV |
+| `KV_REST_API_TOKEN` | auto-added via Vercel Storage → KV |
 
 **Vercel KV setup:** Dashboard → Storage → Create Database → KV → Connect to project.
 
 ---
 
-## Fee Model
+## Tech stack
 
-PocketChange charges a **0.25% coordination fee** per staking deposit.
-
-- Fee is calculated on the stakeable ETH (balance minus $3 gas reserve)
-- Fee is deducted **before** the Lido deposit, not from rewards
-- Fee is sent to the PocketChange treasury address
-- PocketChange never custodies funds
-
----
-
-## Protocol & Chain
-
-| Parameter | Value |
-|-----------|-------|
-| Chain | Ethereum Mainnet only |
-| Asset | ETH only |
-| Protocol | Lido |
-| Action | stake ETH → receive stETH |
-| Lido contract | `0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84` |
+- **AI:** Claude Haiku (`claude-haiku-4-5`) with tool use
+- **Framework:** FastAPI + Vercel Python serverless
+- **Storage:** Vercel KV (Upstash Redis)
+- **Data:** Etherscan V2, CoinGecko, Lido API
+- **Cron:** Vercel Cron Jobs (daily at midnight UTC)
 
 ---
 
-## Analytics
+## Built by
 
-| Where | What you see |
-|-------|-------------|
-| Vercel → Logs | Every request, errors, response times |
-| Vercel → Analytics | Traffic per endpoint, latency trends |
-| Vercel → Cron Jobs | 24h job execution history |
-| `/agents` endpoint | All registered agents + last analysis |
-| Vercel → Storage → KV | Raw database browser |
-
----
-
-## Safety Principles
-
-- Never requests private keys
-- Never fabricates balances or transactions
-- Always leaves $3 ETH gas reserve untouched
-- Refuses economically irrational operations
-- `requires_signature: true` on all outputs — no self-execution
+[@tekr0x](https://x.com/tekr0x) · [Farcaster](https://farcaster.xyz/tekrox.eth) · [GitHub](https://github.com/tekr9d3r)
