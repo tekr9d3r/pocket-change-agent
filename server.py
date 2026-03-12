@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 
 from agent import AgentError, run_agent_loop
 from models import AgentRegistration, AgentRequest, PocketChangeResponse
@@ -36,6 +37,109 @@ async def analyze(request: AgentRequest):
 @app.get("/health")
 async def health():
     return {"status": "ok", "agent": "PocketChange"}
+
+
+SKILL_MD = """# PocketChange — Ethereum Yield Coordination Agent
+
+> Automatically earn yield on idle ETH. No keys required.
+
+## What I do
+
+I analyze Ethereum wallets for idle ETH balances between $3–$30 USD and recommend
+staking them through Lido to earn yield. I reason about gas costs, timing, and
+whether funds are truly idle before making any recommendation.
+
+I never hold keys or execute transactions. I produce signed-ready instructions only.
+
+## How to use me
+
+### Option A — One-time analysis
+POST your wallet addresses and get an instant recommendation:
+
+```
+curl -X POST https://pocket-change-agent.vercel.app/analyze \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "wallet_addresses": ["0xYOUR_WALLET"],
+    "agent_context": "idle ETH, no upcoming liquidity needs",
+    "requesting_agent": "your-agent-name"
+  }'
+```
+
+### Option B — Automated 24h monitoring (recommended)
+Register once. I check your wallets every 24 hours automatically.
+
+**Step 1 — Register your wallets:**
+```
+curl -X POST https://pocket-change-agent.vercel.app/register \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "agent_id": "your-agent-name",
+    "wallet_addresses": ["0xWALLET1", "0xWALLET2"]
+  }'
+```
+
+**Step 2 — Fetch latest results anytime:**
+```
+curl https://pocket-change-agent.vercel.app/results/your-agent-name
+```
+
+## Response format
+
+```json
+{
+  "agent": "PocketChange",
+  "chain": "ethereum",
+  "recommended_action": "stake | wait | none | insufficient_information",
+  "decision_reasoning": "...",
+  "protocol": "lido",
+  "estimated_value_usd": 12.50,
+  "risk_level": "low | medium | high",
+  "fee_percentage": 0.25,
+  "fee_amount_eth": "0.000005",
+  "requires_signature": true,
+  "execution_steps": [
+    { "step": 1, "action": "Send 0.25% fee to PocketChange treasury", "value_eth": "0.000005" },
+    { "step": 2, "action": "Call Lido submit()", "contract": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "value_eth": "0.002" }
+  ]
+}
+```
+
+## Rules
+
+- Ethereum Mainnet only
+- ETH only — no other tokens
+- Lido only — no other protocols
+- Always leaves $3 ETH gas reserve untouched
+- `requires_signature` is always `true` — you must sign and execute
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /analyze | One-time wallet analysis |
+| POST | /register | Register for 24h automated monitoring |
+| GET | /results/{agent_id} | Fetch latest analysis for registered agent |
+| GET | /agents | List all registered agents |
+| GET | /schema | Full JSON schema of response |
+| GET | /health | Health check |
+| GET | /skill.md | This file |
+
+## Fee model
+
+0.25% coordination fee per staking deposit, deducted before the Lido deposit.
+Fee recipient: PocketChange treasury. Never from rewards.
+
+## Source
+
+GitHub: https://github.com/tekr9d3r/pocket-change-agent
+"""
+
+
+@app.get("/skill.md", response_class=PlainTextResponse)
+async def skill():
+    """Agent skill file — describes how to integrate with PocketChange."""
+    return SKILL_MD
 
 
 @app.get("/schema")
