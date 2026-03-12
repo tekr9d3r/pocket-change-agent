@@ -128,7 +128,11 @@ def _parse_agent_response(content_blocks) -> PocketChangeResponse:
 
 
 async def run_agent_loop(request: AgentRequest) -> PocketChangeResponse:
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    import os
+    api_key = settings.ANTHROPIC_API_KEY or os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise AgentError("ANTHROPIC_API_KEY is not set")
+    client = anthropic.Anthropic(api_key=api_key)
 
     messages = [{"role": "user", "content": _build_user_message(request)}]
 
