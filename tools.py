@@ -16,8 +16,9 @@ LIDO_DEPOSIT_GAS_UNITS = 120_000
 
 
 async def get_eth_balance(wallet_address: str) -> dict:
-    url = "https://api.etherscan.io/api"
+    url = "https://api.etherscan.io/v2/api"
     params = {
+        "chainid": "1",
         "module": "account",
         "action": "balance",
         "address": wallet_address,
@@ -61,8 +62,9 @@ async def get_eth_price_usd() -> dict:
 
 
 async def get_gas_price() -> dict:
-    url = "https://api.etherscan.io/api"
+    url = "https://api.etherscan.io/v2/api"
     params = {
+        "chainid": "1",
         "module": "gastracker",
         "action": "gasoracle",
         "apikey": _etherscan_key(),
