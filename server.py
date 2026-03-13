@@ -163,7 +163,7 @@ async def agent_registration():
         "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
         "name": "PocketChange",
         "description": "Autonomous Ethereum yield coordination agent. Finds idle ETH in agent-controlled wallets and recommends staking through Lido. Never holds keys. Always requires_signature: true.",
-        "image": "https://pocket-change-landing.vercel.app/logo.png",
+        "image": "https://pocket-change-landing.vercel.app/public/images/logo-pcaa.png",
         "external_url": "https://pocket-change-landing.vercel.app",
         "agentId": 28532,
         "agentRegistry": "eip155:1:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
