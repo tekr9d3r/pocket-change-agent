@@ -128,11 +128,20 @@ curl https://pocket-change-agent.vercel.app/results/your-agent-name
 | GET | /schema | Full JSON schema of response |
 | GET | /health | Health check |
 | GET | /skill.md | This file |
+| GET | /.well-known/agent-registration.json | ERC-8004 onchain identity proof |
 
 ## Fee model
 
 0.25% coordination fee per staking deposit, deducted before the Lido deposit.
 Fee recipient: PocketChange treasury. Never from rewards.
+
+## Onchain Identity (ERC-8004)
+
+PocketChange has a verified onchain identity on Base Mainnet.
+
+Verify: `GET https://pocket-change-agent.vercel.app/.well-known/agent-registration.json`
+
+Registry: `eip155:8453:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
 
 ## Source
 
@@ -144,6 +153,22 @@ GitHub: https://github.com/tekr9d3r/pocket-change-agent
 async def skill():
     """Agent skill file — describes how to integrate with PocketChange."""
     return SKILL_MD
+
+
+@app.get("/.well-known/agent-registration.json")
+async def agent_registration():
+    """ERC-8004 onchain agent identity proof. Links this domain to the onchain identity."""
+    return {
+        "agentId": "29ceaee4bc9a4202baa8e75ed91aeaa3",
+        "agentRegistry": "eip155:8453:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+        "registrationTxn": "0x60838492c32a409545cc43d5c7ba1c90f1d01d3a03d73d78846cb6f4e65ca00c",
+        "name": "PocketChange",
+        "description": "Autonomous Ethereum yield coordination agent. Finds idle ETH in agent wallets and recommends Lido staking.",
+        "endpoint": "https://pocket-change-agent.vercel.app",
+        "skillMd": "https://pocket-change-agent.vercel.app/skill.md",
+        "standard": "ERC-8004",
+        "chain": "base-mainnet",
+    }
 
 
 @app.get("/schema")
