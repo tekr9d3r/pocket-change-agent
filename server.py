@@ -157,17 +157,22 @@ async def skill():
 
 @app.get("/.well-known/agent-registration.json")
 async def agent_registration():
-    """ERC-8004 onchain agent identity proof. Links this domain to the onchain identity."""
+    """ERC-8004 agent registration file. Used as agentURI when calling IdentityRegistry.register()."""
     return {
-        "agentId": "29ceaee4bc9a4202baa8e75ed91aeaa3",
-        "agentRegistry": "eip155:8453:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
-        "registrationTxn": "0x60838492c32a409545cc43d5c7ba1c90f1d01d3a03d73d78846cb6f4e65ca00c",
+        "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
         "name": "PocketChange",
-        "description": "Autonomous Ethereum yield coordination agent. Finds idle ETH in agent wallets and recommends Lido staking.",
-        "endpoint": "https://pocket-change-agent.vercel.app",
-        "skillMd": "https://pocket-change-agent.vercel.app/skill.md",
-        "standard": "ERC-8004",
-        "chain": "base-mainnet",
+        "description": "Autonomous Ethereum yield coordination agent. Finds idle ETH in agent-controlled wallets and recommends staking through Lido. Never holds keys. Always requires_signature: true.",
+        "image": "https://pocket-change-landing.vercel.app/favicon.ico",
+        "services": [
+            {
+                "name": "skill.md",
+                "endpoint": "https://pocket-change-agent.vercel.app/skill.md",
+                "version": "1.0.0"
+            }
+        ],
+        "x402Support": False,
+        "active": True,
+        "supportedTrust": ["reputation"],
     }
 
 
