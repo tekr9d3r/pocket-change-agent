@@ -6,7 +6,6 @@ PocketChange finds idle ETH sitting in agent wallets and stakes everything above
 
 **It never holds your keys. It never executes transactions. It just reasons, decides, and hands back signed instructions.**
 
-**Live:** https://pocket-change-agent.vercel.app
 **Landing page:** https://pocket-change-landing.vercel.app
 
 ---
