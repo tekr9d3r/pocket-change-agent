@@ -137,11 +137,12 @@ Fee recipient: PocketChange treasury. Never from rewards.
 
 ## Onchain Identity (ERC-8004)
 
-PocketChange has a verified onchain identity on Base Mainnet.
+PocketChange is registered on the official ERC-8004 Identity Registry on Ethereum Mainnet.
 
-Verify: `GET https://pocket-change-agent.vercel.app/.well-known/agent-registration.json`
-
-Registry: `eip155:8453:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
+- Token ID: **28532**
+- Profile: https://www.8004scan.io/agents/ethereum/28532
+- Registry: `eip155:1:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
+- Verify: `GET https://pocket-change-agent.vercel.app/.well-known/agent-registration.json`
 
 ## Source
 
@@ -163,7 +164,15 @@ async def agent_registration():
         "name": "PocketChange",
         "description": "Autonomous Ethereum yield coordination agent. Finds idle ETH in agent-controlled wallets and recommends staking through Lido. Never holds keys. Always requires_signature: true.",
         "image": "https://pocket-change-landing.vercel.app/favicon.ico",
+        "agentId": 28532,
+        "agentRegistry": "eip155:1:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+        "profileUrl": "https://www.8004scan.io/agents/ethereum/28532",
         "services": [
+            {
+                "name": "A2A",
+                "endpoint": "https://pocket-change-agent.vercel.app/analyze",
+                "version": "1.0.0"
+            },
             {
                 "name": "skill.md",
                 "endpoint": "https://pocket-change-agent.vercel.app/skill.md",
