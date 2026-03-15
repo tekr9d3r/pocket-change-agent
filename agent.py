@@ -99,7 +99,7 @@ def _sanitize(text: str) -> str:
     return re.sub(r"[\x00-\x1f\x7f]", " ", text).strip()
 
 
-def _build_user_message(request: AgentRequest) -> str:
+def _build_user_message(request: AgentRequest, paid_via_x402: bool = False) -> str:
     lines = [
         f"Please analyze the following {len(request.wallet_addresses)} wallet(s) for idle ETH (pocket change).",
         f"Gas reserve (always kept): $15 USD",
@@ -109,7 +109,15 @@ def _build_user_message(request: AgentRequest) -> str:
         lines.append(f"Requesting agent: {_sanitize(request.requesting_agent)}")
     if request.agent_context:
         lines.append(f"Agent context / constraints: {_sanitize(request.agent_context)}")
-    lines.append(f"Treasury address for fees: {settings.POCKET_CHANGE_TREASURY_ADDRESS}")
+    if paid_via_x402:
+        lines.append(
+            "Payment: Already collected via x402 ($0.10 USDC on Base). "
+            "Set fee_model to 'x402', fee_percentage to 0, fee_amount_eth to '0', "
+            "and do NOT include a fee transfer step in execution_steps. "
+            "Step 1 should go directly to calling Lido submit()."
+        )
+    else:
+        lines.append(f"Treasury address for fees: {settings.POCKET_CHANGE_TREASURY_ADDRESS}")
     return "\n".join(lines)
 
 
@@ -151,10 +159,10 @@ def _get_client() -> anthropic.Anthropic:
     return _anthropic_client
 
 
-async def run_agent_loop(request: AgentRequest) -> PocketChangeResponse:
+async def run_agent_loop(request: AgentRequest, paid_via_x402: bool = False) -> PocketChangeResponse:
     client = _get_client()
 
-    messages = [{"role": "user", "content": _build_user_message(request)}]
+    messages = [{"role": "user", "content": _build_user_message(request, paid_via_x402)}]
 
     MAX_ITERATIONS = 10
 

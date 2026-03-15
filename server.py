@@ -1,5 +1,6 @@
 import os
 
+import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
@@ -8,6 +9,38 @@ from agent import AgentError, run_agent_loop
 from models import AgentRegistration, AgentRequest, PocketChangeResponse
 from settings import settings
 import storage
+
+
+async def _verify_x402_payment(payment_header: str) -> bool:
+    """Verify an x402 X-PAYMENT header via the public facilitator."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                f"{settings.X402_FACILITATOR_URL}/verify",
+                json={
+                    "payload": payment_header,
+                    "paymentRequirements": [
+                        {
+                            "scheme": "exact",
+                            "network": settings.X402_NETWORK,
+                            "maxAmountRequired": str(int(float(settings.X402_PRICE_USDC) * 1_000_000)),
+                            "resource": "https://pocket-change-agent.vercel.app/analyze",
+                            "description": "PocketChange analysis fee",
+                            "mimeType": "application/json",
+                            "payTo": settings.POCKET_CHANGE_TREASURY_ADDRESS,
+                            "maxTimeoutSeconds": 300,
+                            "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",  # USDC on Base
+                            "extra": {"name": "USDC", "version": "2"},
+                        }
+                    ],
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("isValid", False)
+    except Exception:
+        pass
+    return False
 
 
 app = FastAPI(
@@ -25,13 +58,20 @@ app.add_middleware(
 
 
 @app.post("/analyze", response_model=PocketChangeResponse)
-async def analyze(request: AgentRequest):
+async def analyze(request: AgentRequest, req: Request):
     """
     Analyze wallet(s) for idle ETH pocket change and recommend staking action.
-    Designed for agent-to-agent communication.
+    Supports two fee models:
+    - Classic: 0.25% ETH fee deducted from staked amount (no setup needed)
+    - x402: flat $0.10 USDC per call via X-PAYMENT header (no ETH fee deducted)
     """
+    x_payment = req.headers.get("x-payment") or req.headers.get("payment-signature")
+    paid_via_x402 = False
+    if x_payment:
+        paid_via_x402 = await _verify_x402_payment(x_payment)
+
     try:
-        return await run_agent_loop(request)
+        return await run_agent_loop(request, paid_via_x402=paid_via_x402)
     except AgentError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -132,8 +172,18 @@ curl https://pocket-change-agent.vercel.app/results/your-agent-name
 
 ## Fee model
 
-0.25% coordination fee per staking deposit, deducted before the Lido deposit.
-Fee recipient: PocketChange treasury. Never from rewards.
+Two options — choose based on your setup:
+
+**Option 1 — Classic (default, no setup needed)**
+0.25% of staked ETH, deducted before the Lido deposit. Included in execution_steps.
+
+**Option 2 — x402 (flat $0.10 USDC per call)**
+Include a valid `X-PAYMENT` header (USDC on Base, eip155:8453).
+If verified, the ETH fee is waived — execution_steps go directly to Lido.
+Better for high-frequency callers. Requires USDC on Base.
+
+x402 facilitator: https://x402.org/facilitator
+Pay to: PocketChange treasury (see /.well-known/agent-registration.json)
 
 ## Onchain Identity (ERC-8004)
 
@@ -180,7 +230,14 @@ async def agent_registration():
                 "version": "1.0.0"
             }
         ],
-        "x402Support": False,
+        "x402Support": True,
+        "x402": {
+            "facilitator": "https://x402.org/facilitator",
+            "network": settings.X402_NETWORK,
+            "price": f"${settings.X402_PRICE_USDC} USDC",
+            "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            "description": "Flat $0.10 USDC per /analyze call. ETH fee waived when x402 payment verified.",
+        },
         "active": True,
         "supportedTrust": ["reputation"],
     }

@@ -15,6 +15,10 @@ class Settings:
     PORT: int = int(os.environ.get("PORT", "8000"))
     KV_REST_API_URL: str = os.environ.get("KV_REST_API_URL", "")
     KV_REST_API_TOKEN: str = os.environ.get("KV_REST_API_TOKEN", "")
+    # x402 payment settings
+    X402_FACILITATOR_URL: str = os.environ.get("X402_FACILITATOR_URL", "https://x402.org/facilitator")
+    X402_PRICE_USDC: str = os.environ.get("X402_PRICE_USDC", "0.10")
+    X402_NETWORK: str = os.environ.get("X402_NETWORK", "eip155:8453")  # Base mainnet
 
 
 settings = Settings()
