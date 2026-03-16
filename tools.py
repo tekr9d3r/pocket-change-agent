@@ -113,9 +113,9 @@ async def get_lido_apy() -> dict:
                 "source": "lido",
             }
     except httpx.TimeoutException:
-        return {"apy_percent": 3.5, "source": "lido_fallback", "fallback": True, "error": "timeout"}
+        return {"apy_percent": 2.4, "source": "lido_fallback", "fallback": True, "error": "timeout"}
     except Exception as e:
-        return {"apy_percent": 3.5, "source": "lido_fallback", "fallback": True, "error": str(e)}
+        return {"apy_percent": 2.4, "source": "lido_fallback", "fallback": True, "error": str(e)}
 
 
 # Semaphore to respect Etherscan free-tier rate limit (5 req/sec)
