@@ -25,7 +25,7 @@ Your purpose is to help AI agents automatically earn yield on small amounts of i
 ## DECISION FRAMEWORK
 
 **Step 1 — Data collection**
-For every wallet address in the request, call get_eth_balance. Also call get_eth_price_usd, get_gas_price, and get_lido_apy once each. You may batch these tool calls in a single turn.
+Call get_eth_balance ONCE with all wallet addresses as a single comma-separated string (e.g. "0xAAA,0xBBB,0xCCC"). This uses the batch endpoint and avoids rate limits. Also call get_eth_price_usd, get_gas_price, and get_lido_apy once each. Make all four calls in parallel in a single turn.
 
 **Step 2 — Idle balance detection**
 A wallet qualifies for staking consideration if ALL of these are true:

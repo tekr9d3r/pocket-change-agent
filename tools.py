@@ -16,29 +16,40 @@ LIDO_DEPOSIT_GAS_UNITS = 120_000
 
 
 async def get_eth_balance(wallet_address: str) -> dict:
+    """Fetch balance for one or more wallets. Accepts comma-separated addresses for batch lookup (max 20)."""
     url = "https://api.etherscan.io/v2/api"
+    addresses = [a.strip() for a in wallet_address.split(",")]
+    action = "balancemulti" if len(addresses) > 1 else "balance"
     params = {
         "chainid": "1",
         "module": "account",
-        "action": "balance",
-        "address": wallet_address,
+        "action": action,
+        "address": ",".join(addresses),
         "tag": "latest",
         "apikey": _etherscan_key(),
     }
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(url, params=params)
             resp.raise_for_status()
             data = resp.json()
             if data.get("status") != "1":
                 return {"wallet": wallet_address, "error": data.get("message", "Etherscan error")}
-            balance_wei = int(data["result"])
-            balance_eth = balance_wei / 1e18
-            return {
-                "wallet": wallet_address,
-                "balance_wei": str(balance_wei),
-                "balance_eth": balance_eth,
-            }
+            if action == "balancemulti":
+                # Returns list of {account, balance}
+                results = []
+                for item in data["result"]:
+                    bal_eth = int(item["balance"]) / 1e18
+                    results.append({"wallet": item["account"], "balance_eth": bal_eth, "balance_wei": item["balance"]})
+                return {"balances": results}
+            else:
+                balance_wei = int(data["result"])
+                balance_eth = balance_wei / 1e18
+                return {
+                    "wallet": addresses[0],
+                    "balance_wei": str(balance_wei),
+                    "balance_eth": balance_eth,
+                }
     except httpx.TimeoutException:
         return {"wallet": wallet_address, "error": "timeout"}
     except Exception as e:
@@ -149,15 +160,16 @@ TOOL_DEFINITIONS = [
     {
         "name": "get_eth_balance",
         "description": (
-            "Fetch the current ETH balance of a single wallet address from Etherscan. "
-            "Call once per wallet address provided."
+            "Fetch the current ETH balance of one or more wallet addresses from Etherscan. "
+            "Pass a single address or a comma-separated list of up to 20 addresses. "
+            "Always batch all wallet addresses into a single call to avoid rate limits."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "wallet_address": {
                     "type": "string",
-                    "description": "Ethereum wallet address starting with 0x (42 characters total)",
+                    "description": "One Ethereum address (0x...) or comma-separated list of up to 20 addresses for batch lookup.",
                 }
             },
             "required": ["wallet_address"],
