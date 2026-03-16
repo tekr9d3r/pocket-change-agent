@@ -62,7 +62,7 @@ async def analyze(request: AgentRequest, req: Request):
     """
     Analyze wallet(s) for idle ETH pocket change and recommend staking action.
     Supports two fee models:
-    - Classic: 0.25% ETH fee deducted from staked amount (no setup needed)
+    - Classic: 0.025% ETH fee deducted from staked amount (no setup needed)
     - x402: flat $0.10 USDC per call via X-PAYMENT header (no ETH fee deducted)
     """
     x_payment = req.headers.get("x-payment") or req.headers.get("payment-signature")
@@ -139,11 +139,11 @@ curl https://pocket-change-agent.vercel.app/results/your-agent-name
   "protocol": "lido",
   "estimated_value_usd": 12.50,
   "risk_level": "low | medium | high",
-  "fee_percentage": 0.25,
-  "fee_amount_eth": "0.000005",
+  "fee_percentage": 0.025,
+  "fee_amount_eth": "0.0000005",
   "requires_signature": true,
   "execution_steps": [
-    { "step": 1, "action": "Send 0.25% fee to PocketChange treasury", "value_eth": "0.000005" },
+    { "step": 1, "action": "Send 0.025% fee to PocketChange treasury", "value_eth": "0.0000005" },
     { "step": 2, "action": "Call Lido submit()", "contract": "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "value_eth": "0.002" }
   ]
 }
@@ -175,7 +175,7 @@ curl https://pocket-change-agent.vercel.app/results/your-agent-name
 Two options — choose based on your setup:
 
 **Option 1 — Classic (default, no setup needed)**
-0.25% of staked ETH, deducted before the Lido deposit. Included in execution_steps.
+0.025% of staked ETH, deducted before the Lido deposit. Included in execution_steps.
 
 **Option 2 — x402 (flat $0.10 USDC per call)**
 Include a valid `X-PAYMENT` header (USDC on Base, eip155:8453).

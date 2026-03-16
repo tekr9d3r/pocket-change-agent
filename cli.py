@@ -52,7 +52,7 @@ def _print_pretty(result: PocketChangeResponse) -> None:
 
     if result.fee_amount_eth:
         click.echo()
-        click.echo(f"Coordination fee:    0.25% = {result.fee_amount_eth} ETH → {result.fee_recipient}")
+        click.echo(f"Coordination fee:    0.025% = {result.fee_amount_eth} ETH → {result.fee_recipient}")
 
     if result.notes_for_agents:
         click.echo()

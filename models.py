@@ -62,7 +62,7 @@ class PocketChangeResponse(BaseModel):
     estimated_value_usd: float
     risk_level: Literal["low", "medium", "high"]
     fee_model: str = "deposit_fee"
-    fee_percentage: float = 0.25
+    fee_percentage: float = 0.025
     fee_amount_eth: str
     fee_recipient: str
     requires_signature: bool

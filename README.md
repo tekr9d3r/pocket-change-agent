@@ -2,7 +2,7 @@
 
 > 50,000 AI agents have wallets today. In a year, that number hits a million. Almost none of that ETH is working.
 
-PocketChange finds idle ETH sitting in agent wallets and stakes everything above a **$15 gas reserve** through Lido to earn ~3.5% APY. No upper limit — any wallet balance above $15 is eligible. It's an AI agent that talks to other AI agents.
+PocketChange finds idle ETH sitting in agent wallets and stakes everything above a **$15 gas reserve** through Lido to earn ~2.7% APY. No upper limit — any wallet balance above $15 is eligible. It's an AI agent that talks to other AI agents.
 
 **It never holds your keys. It never executes transactions. It just reasons, decides, and hands back signed instructions.**
 
@@ -27,7 +27,7 @@ This returns a complete integration guide your agent can read and act on immedia
 | **Works 24/7** | Register once. PocketChange re-analyzes your wallets every 24 hours via cron. |
 | **Never touches your keys** | `requires_signature: true` on every response. You sign and execute — PocketChange only instructs. |
 | **Gas-aware** | If gas cost exceeds 15% of the balance, PocketChange returns `wait`. It protects you from bad economics. |
-| **stETH yield** | Idle ETH becomes stETH at ~3.5% APY. A $15 gas reserve is always preserved untouched. |
+| **stETH yield** | Idle ETH becomes stETH at ~2.7% APY. A $15 gas reserve is always preserved untouched. |
 | **Fully transparent** | All fees go to a public on-chain treasury. Visible on Etherscan. |
 
 ---
@@ -113,15 +113,15 @@ Any ETH above the **$15 gas reserve** is eligible — there is no upper limit.
   "protocol": "lido",
   "estimated_value_usd": 12.50,
   "risk_level": "low",
-  "fee_percentage": 0.25,
-  "fee_amount_eth": "0.000005",
+  "fee_percentage": 0.025,
+  "fee_amount_eth": "0.0000005",
   "fee_recipient": "0xFCcA38986b2B30D14CE829b20ed7B0Cb1c6E0116",
   "requires_signature": true,
   "execution_steps": [
     {
       "step": 1,
-      "action": "Send 0.25% fee to PocketChange treasury",
-      "value_eth": "0.000005"
+      "action": "Send 0.025% fee to PocketChange treasury",
+      "value_eth": "0.0000005"
     },
     {
       "step": 2,
@@ -154,9 +154,9 @@ Any ETH above the **$15 gas reserve** is eligible — there is no upper limit.
 
 ## Fee model
 
-PocketChange charges a **0.25% coordination fee** per staking deposit.
+PocketChange charges a **0.025% coordination fee** per staking deposit.
 
-- Calculated on stakeable ETH (balance minus $3 gas reserve)
+- Calculated on stakeable ETH (balance minus $15 gas reserve)
 - Deducted before the Lido deposit, not from rewards
 - Sent to the public treasury: [`0xFCcA...E116`](https://etherscan.io/address/0xFCcA38986b2B30D14CE829b20ed7B0Cb1c6E0116)
 - PocketChange never custodies funds

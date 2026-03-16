@@ -47,7 +47,7 @@ Using estimated_lido_deposit_cost_eth from get_gas_price:
 - gas_reserve_eth = $15 worth of ETH at current price (this stays in the wallet, never staked)
 - stakeable_eth = wallet_balance_eth - gas_reserve_eth  (stake only the amount above the $15 floor)
 - total_pocket_change_eth = sum of stakeable_eth across all pocket_change_wallets
-- fee_amount_eth = total_pocket_change_eth * 0.0025  (0.25%)
+- fee_amount_eth = total_pocket_change_eth * 0.00025  (0.025%)
 - fee is deducted from ETH BEFORE deposit, not from rewards
 
 **Step 6 — Execution steps**
@@ -84,7 +84,7 @@ Schema:
   "estimated_value_usd": 0.0,
   "risk_level": "low | medium | high",
   "fee_model": "deposit_fee",
-  "fee_percentage": 0.25,
+  "fee_percentage": 0.025,
   "fee_amount_eth": "0.000000",
   "fee_recipient": "<POCKET_CHANGE_TREASURY_ADDRESS>",
   "requires_signature": true,
