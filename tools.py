@@ -138,6 +138,7 @@ async def execute_tool(tool_name: str, tool_input: dict) -> str:
         return json.dumps({"error": f"Unknown tool: {tool_name}"})
     if tool_name in _ETHERSCAN_TOOLS:
         async with _etherscan_semaphore:
+            await asyncio.sleep(0.25)  # 4 req/sec max, safely under Etherscan free-tier limit
             result = await fn(**tool_input)
     else:
         result = await fn(**tool_input)
