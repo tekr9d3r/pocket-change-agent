@@ -82,7 +82,9 @@ async def analyze(request: AgentRequest, req: Request):
     """
     x_payment = req.headers.get("x-payment") or req.headers.get("payment-signature")
 
-    if not x_payment:
+    paid_via_x402 = False
+    if x_payment == "x402":
+        # Caller explicitly requests x402 flow — return 402 with payment instructions
         payment_requirements = {**_PAYMENT_REQUIREMENTS, "payTo": settings.POCKET_CHANGE_TREASURY_ADDRESS}
         return JSONResponse(
             status_code=402,
@@ -96,8 +98,9 @@ async def analyze(request: AgentRequest, req: Request):
                 )
             },
         )
-
-    paid_via_x402 = await _verify_x402_payment(x_payment)
+    elif x_payment:
+        # Caller provided a signed payment — verify it
+        paid_via_x402 = await _verify_x402_payment(x_payment)
 
     try:
         return await run_agent_loop(request, paid_via_x402=paid_via_x402)
