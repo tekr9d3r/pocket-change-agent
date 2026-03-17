@@ -3,7 +3,7 @@ import os
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from agent import AgentError, run_agent_loop
 from models import AgentRegistration, AgentRequest, PocketChangeResponse
@@ -57,6 +57,20 @@ app.add_middleware(
 )
 
 
+_PAYMENT_REQUIREMENTS = {
+    "scheme": "exact",
+    "network": "base",
+    "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "maxAmountRequired": "100000",  # $0.10 USDC (6 decimals)
+    "resource": "https://pocket-change-agent.vercel.app/analyze",
+    "description": "PocketChange wallet analysis — $0.10 USDC on Base. ETH fee waived.",
+    "mimeType": "application/json",
+    "payTo": None,  # filled at runtime from settings
+    "maxTimeoutSeconds": 300,
+    "extra": {"name": "USDC", "version": "2"},
+}
+
+
 @app.post("/analyze", response_model=PocketChangeResponse)
 async def analyze(request: AgentRequest, req: Request):
     """
@@ -64,11 +78,26 @@ async def analyze(request: AgentRequest, req: Request):
     Supports two fee models:
     - Classic: 0.025% ETH fee deducted from staked amount (no setup needed)
     - x402: flat $0.10 USDC per call via X-PAYMENT header (no ETH fee deducted)
+    Returns HTTP 402 with payment instructions if X-PAYMENT header is missing.
     """
     x_payment = req.headers.get("x-payment") or req.headers.get("payment-signature")
-    paid_via_x402 = False
-    if x_payment:
-        paid_via_x402 = await _verify_x402_payment(x_payment)
+
+    if not x_payment:
+        payment_requirements = {**_PAYMENT_REQUIREMENTS, "payTo": settings.POCKET_CHANGE_TREASURY_ADDRESS}
+        return JSONResponse(
+            status_code=402,
+            content={"x402Version": 1, "accepts": [payment_requirements], "error": "Payment required"},
+            headers={
+                "WWW-Authenticate": (
+                    f'x402 scheme="exact", network="base", '
+                    f'asset="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", '
+                    f'amount="100000", payTo="{settings.POCKET_CHANGE_TREASURY_ADDRESS}", '
+                    f'resource="https://pocket-change-agent.vercel.app/analyze"'
+                )
+            },
+        )
+
+    paid_via_x402 = await _verify_x402_payment(x_payment)
 
     try:
         return await run_agent_loop(request, paid_via_x402=paid_via_x402)
@@ -178,7 +207,8 @@ Two options — choose based on your setup:
 0.025% of staked ETH, deducted before the Lido deposit. Included in execution_steps.
 
 **Option 2 — x402 (flat $0.10 USDC per call)**
-Include a valid `X-PAYMENT` header (USDC on Base, eip155:8453).
+Call `/analyze` without `X-PAYMENT` to receive a `HTTP 402` response with payment instructions.
+Send the signed USDC payment on Base, retry with `X-PAYMENT` header.
 If verified, the ETH fee is waived — execution_steps go directly to Lido.
 Better for high-frequency callers. Requires USDC on Base.
 
