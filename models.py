@@ -59,12 +59,12 @@ class PocketChangeResponse(BaseModel):
     recommended_action: Literal["stake", "wait", "none", "insufficient_information"]
     decision_reasoning: str
     protocol: str = "lido"
-    estimated_value_usd: float
-    risk_level: Literal["low", "medium", "high"]
+    estimated_value_usd: float = 0.0
+    risk_level: Literal["low", "medium", "high"] = "low"
     fee_model: str = "deposit_fee"
     fee_percentage: float = 0.025
-    fee_amount_eth: str
-    fee_recipient: str
+    fee_amount_eth: str = "0.000000"
+    fee_recipient: str = ""
     requires_signature: bool
     execution_steps: list[ExecutionStep]
     notes_for_agents: str
